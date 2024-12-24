@@ -1,0 +1,61 @@
+﻿@using Azure.Storage.Blobs
+@using NextEvent_web.Domain
+@using System.Text.Json
+@using System.Text
+@inject BlobServiceClient BlobClient
+
+
+<h3>My Settings</h3>
+
+<EditForm Model="@mySettings" OnValidSubmit="@HandleValidSubmit" FormName="nextEventSetting">
+    <DataAnnotationsValidator />
+    <FluentValidationSummary />
+        <FluentDatePicker Label="Meeting date" @bind-Value="myDate"  />
+        <FluentTextField @bind-Value="mySettings.ImportantDate" Label="Important Date" />
+        <FluentTextField @bind-Value="mySettings.PrimaryRGBColor" Label="Primary RGB Color" />
+        <FluentTextField @bind-Value="mySettings.SecondaryRGBColor" Label="Secondary RGB Color" />
+    <FluentStack Orientation="Orientation.Vertical">
+
+    </FluentStack>
+
+</EditForm>
+
+@code {
+
+    private Domain.MySettings mySettings = new();
+    private DateTime? myDate = DateTime.Now; 
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var docsContainer = BlobClient.GetBlobContainerClient("fileuploads");
+
+            var blobClient = docsContainer.GetBlobClient("mysettings");
+            var downloadInfo = await blobClient.DownloadAsync();
+            using (var streamReader = new StreamReader(downloadInfo.Value.Content))
+            {
+                var content = await streamReader.ReadToEndAsync();
+                mySettings = JsonSerializer.Deserialize<Domain.MySettings>(content) ?? new Domain.MySettings();
+            }
+            myDate = DateTime.Parse(mySettings.ImportantDate);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Oops! --> " + ex.Message);
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        var docsContainer = BlobClient.GetBlobContainerClient("fileuploads");
+
+        var blobClient = docsContainer.GetBlobClient("mysettings");
+        var jsonContent = JsonSerializer.Serialize(mySettings);
+        using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(jsonContent)))
+        {
+            await blobClient.UploadAsync(stream, overwrite: true);
+        }
+    }
+}
