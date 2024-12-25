@@ -1,8 +1,11 @@
-﻿@using Azure.Storage.Blobs
+﻿@page "/settings"
+@using Azure.Storage.Blobs
 @using NextEvent_web.Domain
 @using System.Text.Json
 @using System.Text
 @inject BlobServiceClient BlobClient
+
+@rendermode InteractiveServer
 
 
 <h3>My Settings</h3>

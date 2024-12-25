@@ -5,10 +5,10 @@ var builder = DistributedApplication.CreateBuilder(args);
 
 var storage = builder.AddAzureStorage("storage");
 
-if (builder.Environment.IsDevelopment())
-{
-    storage.RunAsEmulator();
-}
+// if (builder.Environment.IsDevelopment())
+// {
+//     storage.RunAsEmulator();
+// }
 
 var blobs = storage.AddBlobs("BlobConnection");
 
