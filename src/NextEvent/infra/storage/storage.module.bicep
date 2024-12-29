@@ -15,7 +15,7 @@ resource storage 'Microsoft.Storage/storageAccounts@2024-01-01' = {
   properties: {
     accessTier: 'Hot'
     allowBlobPublicAccess: true
-    allowSharedKeyAccess: false
+    allowSharedKeyAccess: true
     minimumTlsVersion: 'TLS1_2'
     networkAcls: {
       defaultAction: 'Allow'
