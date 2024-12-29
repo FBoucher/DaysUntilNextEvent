@@ -5,13 +5,14 @@ from machine import Pin, ADC, reset
 import neopixel
 import random
 import math
+import config
 
 # Globals
-# WiFi credentials
-SSID = 'aaaaaa'
-PASSWORD = 'aaaaaaa'
 
-PIXELS = 50
+SSID = config.SSID
+PASSWORD = config.PASSWORD
+SETTINGSURL = config.SETTINGSURL
+PIXELS = config.PIXELS
 
 # Pin Assignment
 ldr = ADC(26)  # LDR connected to ADC on GPIO 26
@@ -87,13 +88,44 @@ def get_local_time(timezone):
 
 
 
-# Calculate sleeps until Christmas
-def sleeps_until_christmas(current_date):
+
+
+# Function to get lighSettings
+def get_light_settings():
+    try:
+        print(f"Fetching online settings")
+        response = urequests.get(SETTINGSURL)
+        if response.status_code == 200:
+            data = response.json()
+            # Extract ImportantDate, PrimaryRGBColor, SecondaryRGBColor directly from the JSON response
+            ImportantDate = data['ImportantDate']
+            PrimaryRGBColor = data['PrimaryRGBColor']
+            SecondaryRGBColor = data['SecondaryRGBColor']
+            response.close()
+            return (ImportantDate, PrimaryRGBColor, SecondaryRGBColor)
+        else:
+            print(f"Error fetching online settings: {response.status_code}")
+            response.close()
+            return None
+    except Exception as e:
+        print("Error retrieving online settings:", e)
+        return None    
+
+
+
+# Function to convert a string "yyyy-MM-dd" to a date
+def string_to_date(date_string):
+    year, month, day = map(int, date_string.split('-'))
+    return (year, month, day, 0, 0, 0, 0, 0)
+
+# Calculate sleeps until special_day
+def sleeps_until_special_day(current_date, special_day):
     current_year = current_date[0]
-    christmas_date = (current_year, 12, 25)
-    christmas_struct = time.mktime(christmas_date + (0, 0, 0, 0, 0))
+    special_day_struct = time.mktime(string_to_date(special_day))  # Use the new function
+
     today_struct = time.mktime(current_date + (0, 0, 0, 0, 0))
-    sleeps = (christmas_struct - today_struct) // 86400 # seconds in a day
+    sleeps = (special_day_struct - today_struct) // 86400 # seconds in a day
+    
     return int(sleeps)
 
 
@@ -102,8 +134,9 @@ def clamp(value, min_val=0, max_val=255):
     return max(min(int(value), max_val), min_val)
 
 
-def progress(np,sleeps, spread):
+def progress(np, sleeps, spread,light_settings):
     advent = sleeps <= 24
+    test = True
     if advent:
         # Advent adjustment to progress bar
         # to make things confusing, LEDs are indexed from (PIXELS-1) to 0
@@ -116,7 +149,7 @@ def progress(np,sleeps, spread):
                     pixelblockmin = pixelblockmax - pixelblockchunk
                 else:
                     pixelblockmin = 0
-                    # For Christmas Eve, use all remaining pixels
+                    # For special_day Eve, use all remaining pixels
                 # print(f'Day: {i}. {pixelblockmin} to {pixelblockmax}')
                 for j in range(pixelblockmin,pixelblockmax):
                 # Each block drifts at random, clamped between 0 and 255
@@ -124,7 +157,14 @@ def progress(np,sleeps, spread):
                     r = clamp(r + variation_1)
                     g = clamp(g - variation_1)
                     b = clamp(b + variation_2)
-                    np[j] =  (r,g,b)
+                    if test == True:
+                        if i % 2 == 0:
+                            np[j] =  string_to_rgb(light_settings[1])
+                        else:
+                            np[j] =  string_to_rgb(light_settings[2])
+                        
+                    else:
+                        np[j] =  (r,g,b)
     else:
         for i in range(PIXELS):
             # If it is not advent, then this formula will give a nice 'breathing' effect
@@ -132,6 +172,15 @@ def progress(np,sleeps, spread):
             np[i] =  ( clamp(todays_color_r * brightness), clamp(todays_color_g * brightness), clamp(todays_color_b * brightness))
 
     np.write()
+
+
+def string_to_rgb(rgb_string):
+    rgb_string = rgb_string.strip("()")
+    rgb_components = rgb_string.split(",")
+    r = int(rgb_components[0])
+    g = int(rgb_components[1])
+    b = int(rgb_components[2])
+    return (r, g, b)
 
 
 def lightsout(np):
@@ -164,7 +213,7 @@ def wake_up_routine(pixels):
 def main():
     global bedtime, todays_color_r, todays_color_g, todays_color_b
     
-    wake_up_routine(PIXELS)
+    #wake_up_routine(PIXELS)
 
     # Initialise local variables
     LDR_THRESHOLD = 700 # The light dependent resistor reading threshold for light/dark
@@ -182,7 +231,7 @@ def main():
     todays_color_r = random.randrange(1,99) /100
     todays_color_g = random.randrange(1,99) /100
     todays_color_b = random.randrange(1,99) /100
-    print(f"today's based color: ({todays_color_r}, {todays_color_g}, {todays_color_b})")
+    print(f"today's based color: ({todays_color_r, todays_color_g, todays_color_b})")
 
 
     # Interrupts
@@ -210,17 +259,26 @@ def main():
         return
 
     print(f"Current local date: {current_date}")
+    
+    # Get Online settings
+    light_settings = get_light_settings()
+    special_day = light_settings[0]
+    primaryRGBColor = light_settings[1]
+    secondaryRGBColor = light_settings[2]
+    print(f"Important Date: {light_settings[0]}")
+    print(f"Primary RGB Color: {primaryRGBColor}")
+    print(f"Secondary RGB Color: {secondaryRGBColor}")
 
-    # Calculate sleeps until Christmas
-    sleeps = sleeps_until_christmas(current_date)
-    print(f"Number of sleeps until Christmas: {sleeps}")
+    # Calculate sleeps until special_day
+    sleeps = sleeps_until_special_day(current_date, special_day)
+    print(f"Number of sleeps until special_day: {sleeps}")
     # sleeps = 1
     # Main Loop
     while True:
         spread = (spread +.05) % twopi # The parameter that gets passed to progress for periodic light
         dark = ldr.read_u16() > LDR_THRESHOLD # True if ldr value is read as high
         if consistent_dark and not bedtime:  # Darkness detected
-            progress(np,sleeps,spread)
+            progress(np,sleeps,spread,light_settings)
         else:
             if bedtime or consistent_light:
                 lightsout(np)
