@@ -10,10 +10,11 @@ resource storage 'Microsoft.Storage/storageAccounts@2024-01-01' = {
   kind: 'StorageV2'
   location: location
   sku: {
-    name: 'Standard_GRS'
+    name: 'Standard_LRS'
   }
   properties: {
     accessTier: 'Hot'
+    allowBlobPublicAccess: true
     allowSharedKeyAccess: false
     minimumTlsVersion: 'TLS1_2'
     networkAcls: {
