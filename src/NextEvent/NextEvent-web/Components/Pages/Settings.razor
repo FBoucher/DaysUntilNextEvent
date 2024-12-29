@@ -3,31 +3,71 @@
 @using NextEvent_web.Domain
 @using System.Text.Json
 @using System.Text
+@using Microsoft.FluentUI.AspNetCore.Components.Extensions
 @inject BlobServiceClient BlobClient
+@inject IJSRuntime jsRuntime
+@inject IToastService toastService
+@inject ILogger<Settings> Logger
 
 @rendermode InteractiveServer
 
+<FluentDesignTheme @bind-Mode="@Mode"
+				   @bind-OfficeColor="@OfficeColor"
+				   StorageName="theme" />
 
-<h3>My Settings</h3>
+<h2>My Settings</h2>
 
+<h3>Site</h3>
+
+<div>
+	<FluentStack Orientation="Orientation.Vertical">
+		<FluentSelect   Label="Theme" Width="150px"
+						Items="@(Enum.GetValues<DesignThemeModes>())"
+						@bind-SelectedOption="@Mode" />
+		<FluentSelect   Label="Color"
+						Items="@(Enum.GetValues<OfficeColor>().Select(i => (OfficeColor?)i))"
+			Height="200px" Width="250px" @bind-SelectedOption="@OfficeColor">
+			<OptionTemplate>
+				<FluentStack>
+					<FluentIcon Value="@(new Icons.Filled.Size20.RectangleLandscape())" Color="Color.Custom"
+						CustomColor="@(@context.ToAttributeValue() != "default" ? context.ToAttributeValue() : "#036ac4" )" />
+					<FluentLabel>@context</FluentLabel>
+				</FluentStack>
+			</OptionTemplate>
+		</FluentSelect>
+	</FluentStack>
+</div>
+
+<h3>Light Settings</h3>
 <EditForm Model="@mySettings" OnValidSubmit="@HandleValidSubmit" FormName="nextEventSetting">
     <DataAnnotationsValidator />
     <FluentValidationSummary />
-        <FluentDatePicker Label="Meeting date" @bind-Value="myDate"  />
-        <FluentTextField @bind-Value="mySettings.ImportantDate" Label="Important Date" />
-        <FluentTextField @bind-Value="mySettings.PrimaryRGBColor" Label="Primary RGB Color" />
-        <FluentTextField @bind-Value="mySettings.SecondaryRGBColor" Label="Secondary RGB Color" />
+       
     <FluentStack Orientation="Orientation.Vertical">
-
+        <FluentDatePicker Label="Important Date" @bind-Value="myDate"  />
+        <FluentTextField @bind-Value="mySettings.PrimaryRGBColor" Label="Primary RGB Color" Placeholder="(100,0,0)" /><FluentButton OnClick="@(async () => await OpenColorPickerNewWindow())" IconEnd="@(new Icons.Filled.Size24.Color())" />
+        <FluentTextField @bind-Value="mySettings.SecondaryRGBColor" Label="Secondary RGB Color" Placeholder="(0,0,100)" /><FluentButton OnClick="@(async () => await OpenColorPickerNewWindow())" IconEnd="@(new Icons.Filled.Size24.Color())" />
+        <FluentButton Type="ButtonType.Submit" Appearance="Appearance.Accent">Submit</FluentButton>
     </FluentStack>
 
 </EditForm>
 
 @code {
+    public DesignThemeModes Mode { get; set; }
+    public OfficeColor? OfficeColor { get; set; }
 
     private Domain.MySettings mySettings = new();
     private DateTime? myDate = DateTime.Now; 
 
+    void OnLoaded(LoadedEventArgs e)
+    {
+        Logger.LogInformation($"Loaded: {(e.Mode == DesignThemeModes.System ? "System" : "")} {(e.IsDark ? "Dark" : "Light")}");
+    }
+
+    void OnLuminanceChanged(LuminanceChangedEventArgs e)
+    {
+        Logger.LogInformation($"Changed: {(e.Mode == DesignThemeModes.System ? "System" : "")} {(e.IsDark ? "Dark" : "Light")}");
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -54,11 +94,24 @@
     {
         var docsContainer = BlobClient.GetBlobContainerClient("fileuploads");
 
+        mySettings.ImportantDate = myDate?.ToString("yyyy-MM-dd") ?? string.Empty;
+
         var blobClient = docsContainer.GetBlobClient("mysettings");
         var jsonContent = JsonSerializer.Serialize(mySettings);
         using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(jsonContent)))
         {
             await blobClient.UploadAsync(stream, overwrite: true);
+            ShowConfirmationMessage();
         }
+    }
+
+    private void ShowConfirmationMessage()
+    {
+        toastService.ShowSuccess("Settings saved successfully!");
+    }
+
+    private async Task OpenColorPickerNewWindow()
+    {
+        await jsRuntime.InvokeVoidAsync("open", "https://rgbcolorpicker.com/", "_blank");
     }
 }

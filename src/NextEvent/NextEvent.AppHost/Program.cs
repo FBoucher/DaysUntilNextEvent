@@ -3,18 +3,13 @@ using Microsoft.Extensions.Hosting;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
-var storage = builder.AddAzureStorage("storage");
+var blobs = builder.AddConnectionString("BlobConnection");
 
-// if (builder.Environment.IsDevelopment())
-// {
-//     storage.RunAsEmulator();
-// }
-
-var blobs = storage.AddBlobs("BlobConnection");
+//var storage = builder.AddAzureStorage("storage");
+//var blobs = storage.AddBlobs("BlobConnection");
 
 var web = builder.AddProject<Projects.NextEvent_web>("web")
                     .WithExternalHttpEndpoints()
-                    .WithReference(blobs)
-                    .WaitFor(blobs);
+                    .WithReference(blobs);
 
 builder.Build().Run();
