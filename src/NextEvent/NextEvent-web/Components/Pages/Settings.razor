@@ -19,7 +19,7 @@
 
 <h3>Site</h3>
 
-<div>
+<div style="padding: 50px;">
 	<FluentStack Orientation="Orientation.Vertical">
 		<FluentSelect   Label="Theme" Width="150px"
 						Items="@(Enum.GetValues<DesignThemeModes>())"
@@ -39,18 +39,38 @@
 </div>
 
 <h3>Light Settings</h3>
-<EditForm Model="@mySettings" OnValidSubmit="@HandleValidSubmit" FormName="nextEventSetting">
-    <DataAnnotationsValidator />
-    <FluentValidationSummary />
-       
-    <FluentStack Orientation="Orientation.Vertical">
-        <FluentDatePicker Label="Important Date" @bind-Value="myDate"  />
-        <FluentTextField @bind-Value="mySettings.PrimaryRGBColor" Label="Primary RGB Color" Placeholder="(100,0,0)" /><FluentButton OnClick="@(async () => await OpenColorPickerNewWindow())" IconEnd="@(new Icons.Filled.Size24.Color())" />
-        <FluentTextField @bind-Value="mySettings.SecondaryRGBColor" Label="Secondary RGB Color" Placeholder="(0,0,100)" /><FluentButton OnClick="@(async () => await OpenColorPickerNewWindow())" IconEnd="@(new Icons.Filled.Size24.Color())" />
-        <FluentButton Type="ButtonType.Submit" Appearance="Appearance.Accent">Submit</FluentButton>
-    </FluentStack>
 
-</EditForm>
+<div style="padding: 20px;">
+    <EditForm Model="@mySettings" OnValidSubmit="@HandleValidSubmit" FormName="nextEventSetting">
+        <DataAnnotationsValidator />
+        <FluentValidationSummary />
+        
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="20">
+            
+            <FluentStack Orientation="Orientation.Horizontal">
+                <FluentDatePicker Label="Important Date" @bind-Value="myDate"  />
+            </FluentStack>
+
+            <FluentStack Orientation="Orientation.Horizontal">
+                <FluentTextField @bind-Value="mySettings.PrimaryRGBColor" Label="Primary RGB Color" Placeholder="(100,0,0)" @oninput="e => OnPasteRGB(e, nameof(mySettings.PrimaryRGBColor))" />
+                <FluentButton OnClick="@(async () => await OpenColorPickerNewWindow())" IconEnd="@(new Icons.Filled.Size24.Color())" />
+            </FluentStack>
+
+            <FluentStack Orientation="Orientation.Horizontal">
+                <FluentTextField @bind-Value="mySettings.SecondaryRGBColor" Label="Secondary RGB Color" Placeholder="(0,0,100)"  @oninput="e => OnPasteRGB(e, nameof(mySettings.SecondaryRGBColor))"  />
+                <FluentButton OnClick="@(async () => await OpenColorPickerNewWindow())" IconEnd="@(new Icons.Filled.Size24.Color())" />
+            </FluentStack>
+        
+            <FluentStack Orientation="Orientation.Horizontal">
+                <FluentTextField @bind-Value="settingsURL" Label="Settings URL" ReadOnly=true />
+                <FluentButton OnClick="@(async () => await jsRuntime.InvokeVoidAsync("navigator.clipboard.writeText", settingsURL))" IconEnd="@(new Icons.Regular.Size24.ClipboardLink())" />
+            </FluentStack>
+            
+            <FluentButton Type="ButtonType.Submit" Appearance="Appearance.Accent">Submit</FluentButton>
+        </FluentStack>
+
+    </EditForm>
+</div>
 
 @code {
     public DesignThemeModes Mode { get; set; }
@@ -58,6 +78,8 @@
 
     private Domain.MySettings mySettings = new();
     private DateTime? myDate = DateTime.Now; 
+
+    private string settingsURL = string.Empty;
 
     void OnLoaded(LoadedEventArgs e)
     {
@@ -69,13 +91,34 @@
         Logger.LogInformation($"Changed: {(e.Mode == DesignThemeModes.System ? "System" : "")} {(e.IsDark ? "Dark" : "Light")}");
     }
 
+    void OnPasteRGB(ChangeEventArgs e, string propertyName)
+    {
+        var value = e.Value?.ToString();
+
+        if (!string.IsNullOrEmpty(value) && value.StartsWith("rgb"))
+        {
+            value = value.Replace("rgb", "");
+
+            if (propertyName == nameof(mySettings.PrimaryRGBColor))
+            {
+                mySettings.PrimaryRGBColor = value;
+            }
+            else if (propertyName == nameof(mySettings.SecondaryRGBColor))
+            {
+                mySettings.SecondaryRGBColor = value;
+            }
+        }
+    }
+
     protected override async Task OnInitializedAsync()
     {
         try
         {
             var docsContainer = BlobClient.GetBlobContainerClient("fileuploads");
 
-            var blobClient = docsContainer.GetBlobClient("mysettings");
+            var blobClient = docsContainer.GetBlobClient("mysettings.json");
+
+            settingsURL = blobClient.Uri.AbsoluteUri;
             var downloadInfo = await blobClient.DownloadAsync();
             using (var streamReader = new StreamReader(downloadInfo.Value.Content))
             {
@@ -96,7 +139,7 @@
 
         mySettings.ImportantDate = myDate?.ToString("yyyy-MM-dd") ?? string.Empty;
 
-        var blobClient = docsContainer.GetBlobClient("mysettings");
+        var blobClient = docsContainer.GetBlobClient("mysettings.json");
         var jsonContent = JsonSerializer.Serialize(mySettings);
         using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(jsonContent)))
         {
