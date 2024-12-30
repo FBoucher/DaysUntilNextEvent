@@ -20,7 +20,7 @@
 <h3>Site</h3>
 
 <div style="padding: 20px;">
-	<FluentStack Orientation="Orientation.Vertical">
+	<FluentStack Orientation="Orientation.Horizontal" VerticalGap="20" HorizontalGap="20"> 
 		<FluentSelect   Label="Theme" Width="150px"
 						Items="@(Enum.GetValues<DesignThemeModes>())"
 						@bind-SelectedOption="@Mode" />

@@ -101,8 +101,9 @@ def get_light_settings():
             ImportantDate = data['ImportantDate']
             PrimaryRGBColor = data['PrimaryRGBColor']
             SecondaryRGBColor = data['SecondaryRGBColor']
+            UseCustomColors = data['UseCustomColors']
             response.close()
-            return (ImportantDate, PrimaryRGBColor, SecondaryRGBColor)
+            return (ImportantDate, PrimaryRGBColor, SecondaryRGBColor, UseCustomColors)
         else:
             print(f"Error fetching online settings: {response.status_code}")
             response.close()
@@ -136,7 +137,6 @@ def clamp(value, min_val=0, max_val=255):
 
 def progress(np, sleeps, spread,light_settings):
     advent = sleeps <= 24
-    test = True
     if advent:
         # Advent adjustment to progress bar
         # to make things confusing, LEDs are indexed from (PIXELS-1) to 0
@@ -157,7 +157,7 @@ def progress(np, sleeps, spread,light_settings):
                     r = clamp(r + variation_1)
                     g = clamp(g - variation_1)
                     b = clamp(b + variation_2)
-                    if test == True:
+                    if light_settings[3] == True:
                         if i % 2 == 0:
                             np[j] =  string_to_rgb(light_settings[1])
                         else:
@@ -265,9 +265,11 @@ def main():
     special_day = light_settings[0]
     primaryRGBColor = light_settings[1]
     secondaryRGBColor = light_settings[2]
+    UseCustomColors = light_settings[3]
     print(f"Important Date: {light_settings[0]}")
     print(f"Primary RGB Color: {primaryRGBColor}")
     print(f"Secondary RGB Color: {secondaryRGBColor}")
+    print(f"Use Custom Colors: {UseCustomColors}")
 
     # Calculate sleeps until special_day
     sleeps = sleeps_until_special_day(current_date, special_day)
