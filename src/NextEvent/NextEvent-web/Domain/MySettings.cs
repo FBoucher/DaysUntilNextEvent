@@ -9,4 +9,6 @@ public class MySettings
     public string PrimaryRGBColor { get; set; } = string.Empty;
 
     public  string SecondaryRGBColor { get; set; } = string.Empty;
+
+    public bool UseCustomColors { get; set; } = false;
 }

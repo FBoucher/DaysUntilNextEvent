@@ -19,7 +19,7 @@
 
 <h3>Site</h3>
 
-<div style="padding: 50px;">
+<div style="padding: 20px;">
 	<FluentStack Orientation="Orientation.Vertical">
 		<FluentSelect   Label="Theme" Width="150px"
 						Items="@(Enum.GetValues<DesignThemeModes>())"
@@ -51,14 +51,27 @@
                 <FluentDatePicker Label="Important Date" @bind-Value="myDate"  />
             </FluentStack>
 
+            <FluentCheckbox @bind-Value="mySettings.UseCustomColors" Label="Use my colors"/>
+
             <FluentStack Orientation="Orientation.Horizontal">
-                <FluentTextField @bind-Value="mySettings.PrimaryRGBColor" Label="Primary RGB Color" Placeholder="(100,0,0)" @oninput="e => OnPasteRGB(e, nameof(mySettings.PrimaryRGBColor))" />
-                <FluentButton OnClick="@(async () => await OpenColorPickerNewWindow())" IconEnd="@(new Icons.Filled.Size24.Color())" />
+                <FluentTextField    @bind-Value="mySettings.PrimaryRGBColor" 
+                                    Label="Primary RGB Color" 
+                                    Placeholder="(100,0,0)" 
+                                    @oninput="e => OnPasteRGB(e, nameof(mySettings.PrimaryRGBColor))" 
+                                    Disabled="@(!mySettings.UseCustomColors)" />
+                <FluentButton   OnClick="@(async () => await OpenColorPickerNewWindow())" 
+                                IconEnd="@(new Icons.Filled.Size24.Color())" 
+                                Disabled="@(!mySettings.UseCustomColors)" />
             </FluentStack>
 
             <FluentStack Orientation="Orientation.Horizontal">
-                <FluentTextField @bind-Value="mySettings.SecondaryRGBColor" Label="Secondary RGB Color" Placeholder="(0,0,100)"  @oninput="e => OnPasteRGB(e, nameof(mySettings.SecondaryRGBColor))"  />
-                <FluentButton OnClick="@(async () => await OpenColorPickerNewWindow())" IconEnd="@(new Icons.Filled.Size24.Color())" />
+                <FluentTextField    @bind-Value="mySettings.SecondaryRGBColor" 
+                                    Label="Secondary RGB Color" Placeholder="(0,0,100)"  
+                                    @oninput="e => OnPasteRGB(e, nameof(mySettings.SecondaryRGBColor))"  
+                                    Disabled="@(!mySettings.UseCustomColors)" />
+                <FluentButton   OnClick="@(async () => await OpenColorPickerNewWindow())" 
+                                IconEnd="@(new Icons.Filled.Size24.Color())" 
+                                Disabled="@(!mySettings.UseCustomColors)" />
             </FluentStack>
         
             <FluentStack Orientation="Orientation.Horizontal">
