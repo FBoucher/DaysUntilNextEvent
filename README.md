@@ -2,6 +2,8 @@
 
 Inspired by [howmanysleeps](https://github.com/veebch/howmanysleeps) and [hometime](https://github.com/veebch/hometime) from [veebch](https://github.com/veebch) I wanted to create a countdown for any dates that may be important for you and didn't want to use Google calendar (it's a great idea, but I wanted to skip the API settings).
 
+![Raspberry Pi pico and the light using custom colors](medias/light-and-pi.jpg)
+
 ## What it is
 
 This project is composed of two parts:
