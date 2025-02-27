@@ -14,6 +14,7 @@ PASSWORD = config.PASSWORD
 SETTINGSURL = config.SETTINGSURL
 PIXELS = config.PIXELS
 
+
 # Pin Assignment
 ldr = ADC(26)  # LDR connected to ADC on GPIO 26
 switch = Pin(15, Pin.IN, Pin.PULL_UP)  # Pull-up for momentary switch
@@ -21,12 +22,12 @@ np = neopixel.NeoPixel(Pin(28), PIXELS)
 led = Pin("LED", Pin.OUT)
 
 
-def trigger_bedtime(pin):
-    global bedtime, np
-    switch.irq(handler=None)  # Disable the interrupt after the first trigger we want the button to work once only per day
-    print("Interrupt disabled")
-    bedtime = True
-    print('lights out')
+# def trigger_bedtime(pin):
+#     global bedtime, np
+#     switch.irq(handler=None)  # Disable the interrupt after the first trigger we want the button to work once only per day
+#     print("Interrupt disabled")
+#     bedtime = True
+#     print('lights out')
 
 
 # Function to connect to WiFi
@@ -103,8 +104,10 @@ def get_light_settings():
             PrimaryRGBColor = data['PrimaryRGBColor']
             SecondaryRGBColor = data['SecondaryRGBColor']
             UseCustomColors = data['UseCustomColors']
+            StartTime = data['StartTime']
+            EndTime = data['EndTime']
             response.close()
-            return (ImportantDate, StartFromDay, PrimaryRGBColor, SecondaryRGBColor, UseCustomColors)
+            return (ImportantDate, StartFromDay, PrimaryRGBColor, SecondaryRGBColor, UseCustomColors, StartTime, EndTime)
         else:
             print(f"Error fetching online settings: {response.status_code}")
             response.close()
@@ -217,9 +220,24 @@ def string_to_date_tuple(date_string):
     return (year, month, day)
 
 
+def is_within_time_range(start_time, end_time, current_time):
+    start_hour, start_minute = map(int, start_time.split(':'))
+    end_hour, end_minute = map(int, end_time.split(':'))
+    current_hour, current_minute = current_time[3], current_time[4]
+
+    start_minutes = start_hour * 60 + start_minute
+    end_minutes = end_hour * 60 + end_minute
+    current_minutes = current_hour * 60 + current_minute
+
+    if start_minutes <= end_minutes:
+        return start_minutes <= current_minutes <= end_minutes
+    else:
+        return current_minutes >= start_minutes or current_minutes <= end_minutes
+
+
 # Main program
 def main():
-    global bedtime, todays_color_r, todays_color_g, todays_color_b
+    global todays_color_r, todays_color_g, todays_color_b  #bedtime, 
     
     #wake_up_routine(PIXELS)
 
@@ -232,7 +250,7 @@ def main():
     consistent_dark = False
     spread = 0
     dark = False # Assume light
-    bedtime = False  # Bedtime button not pressed
+    # bedtime = False  # Bedtime button not pressed
     twopi = math.pi*2
     
     #color of the day
@@ -243,7 +261,7 @@ def main():
 
 
     # Interrupts
-    switch.irq(trigger=Pin.IRQ_FALLING, handler=trigger_bedtime)
+    # switch.irq(trigger=Pin.IRQ_FALLING, handler=trigger_bedtime)
 
     # Start
     # toggle onboard LED as sign of life
@@ -275,6 +293,8 @@ def main():
     primaryRGBColor = light_settings[2]
     secondaryRGBColor = light_settings[3]
     UseCustomColors = light_settings[4]
+    start_time = light_settings[5]
+    end_time = light_settings[6]
     print(f"Important Date: {light_settings[0]}")
     print(f"Start from Date: {start_from_day}")
     print(f"Primary RGB Color: {primaryRGBColor}")
@@ -290,20 +310,30 @@ def main():
     countdown_days = abs(days_between_dates(current_date, start_from_day))
     print(f"The countdown is about: {countdown_days} days")
 
-
+    print(f"Start Time: {start_time}")
+    print(f"End Time: {end_time}")
 
     # sleeps = 1
     # Main Loop
     while True:
         spread = (spread +.05) % twopi # The parameter that gets passed to progress for periodic light
         dark = ldr.read_u16() > LDR_THRESHOLD # True if ldr value is read as high
-        if consistent_dark and not bedtime:  # Darkness detected
-            progress(countdown_days,np,sleeps,spread,light_settings)
-        else:
-            if bedtime or consistent_light:
-                lightsout(np)
+        current_time = time.localtime()
 
-        if consistent_light and bedtime:
+        print(f"it'scurrently: {current_time}")
+
+        if is_within_time_range(start_time, end_time, current_time):
+            print('-> lights on!')
+            if consistent_dark: #and not bedtime:  # Darkness detected
+                progress(countdown_days,np,sleeps,spread,light_settings)
+            else:
+                if  consistent_light:  # bedtime or
+                    lightsout(np)
+        else:
+            print('-> lights off!')
+            lightsout(np)
+
+        if consistent_light: #and bedtime:
             # It has been light for multiple consecutive readings following a bedtime button press
             print('Looks like morning. Resetting...')
             reset()
