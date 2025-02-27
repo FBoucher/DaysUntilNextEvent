@@ -99,11 +99,12 @@ def get_light_settings():
             data = response.json()
             # Extract ImportantDate, PrimaryRGBColor, SecondaryRGBColor directly from the JSON response
             ImportantDate = data['ImportantDate']
+            StartFromDay = data['StartFromDay']
             PrimaryRGBColor = data['PrimaryRGBColor']
             SecondaryRGBColor = data['SecondaryRGBColor']
             UseCustomColors = data['UseCustomColors']
             response.close()
-            return (ImportantDate, PrimaryRGBColor, SecondaryRGBColor, UseCustomColors)
+            return (ImportantDate, StartFromDay, PrimaryRGBColor, SecondaryRGBColor, UseCustomColors)
         else:
             print(f"Error fetching online settings: {response.status_code}")
             response.close()
@@ -120,7 +121,7 @@ def string_to_date(date_string):
     return (year, month, day, 0, 0, 0, 0, 0)
 
 # Calculate sleeps until special_day
-def sleeps_until_special_day(current_date, special_day):
+def days_between_dates(current_date, special_day):
     current_year = current_date[0]
     special_day_struct = time.mktime(string_to_date(special_day))  # Use the new function
 
@@ -135,16 +136,18 @@ def clamp(value, min_val=0, max_val=255):
     return max(min(int(value), max_val), min_val)
 
 
-def progress(np, sleeps, spread,light_settings):
-    advent = sleeps <= 24
+def progress(countdown_days, np, sleeps, spread,light_settings):
+
+
+    advent = sleeps <= countdown_days
     if advent:
         # Advent adjustment to progress bar
         # to make things confusing, LEDs are indexed from (PIXELS-1) to 0
-        for i in range(24, sleeps-1, -1):
-                variation_1 = (25-i) * random.choice ([-1,1]) #either -1 or +1, each sleep less is more volatile
-                variation_2 = (25-i) * random.choice ([-1,1])
-                pixelblockchunk = int(PIXELS/24) # We'll use blocks of this size for the first 23 days
-                pixelblockmax = PIXELS - (24 - i) * pixelblockchunk
+        for i in range(countdown_days, sleeps-1, -1):
+                variation_1 = ((countdown_days+1)-i) * random.choice ([-1,1]) #either -1 or +1, each sleep less is more volatile
+                variation_2 = ((countdown_days+1)-i) * random.choice ([-1,1])
+                pixelblockchunk = int(PIXELS/countdown_days) # We'll use blocks of this size for the first countdown_days days
+                pixelblockmax = PIXELS - (countdown_days - i) * pixelblockchunk
                 if i>1:
                     pixelblockmin = pixelblockmax - pixelblockchunk
                 else:
@@ -207,7 +210,12 @@ def wake_up_routine(pixels):
     time.sleep_ms(500)
     np.fill((0, 0, 0))
     np.write()
-    
+
+
+def string_to_date_tuple(date_string):
+    year, month, day = map(int, date_string.split('-'))
+    return (year, month, day)
+
 
 # Main program
 def main():
@@ -263,24 +271,34 @@ def main():
     # Get Online settings
     light_settings = get_light_settings()
     special_day = light_settings[0]
-    primaryRGBColor = light_settings[1]
-    secondaryRGBColor = light_settings[2]
-    UseCustomColors = light_settings[3]
+    start_from_day = light_settings[1]
+    primaryRGBColor = light_settings[2]
+    secondaryRGBColor = light_settings[3]
+    UseCustomColors = light_settings[4]
     print(f"Important Date: {light_settings[0]}")
+    print(f"Start from Date: {start_from_day}")
     print(f"Primary RGB Color: {primaryRGBColor}")
     print(f"Secondary RGB Color: {secondaryRGBColor}")
     print(f"Use Custom Colors: {UseCustomColors}")
 
     # Calculate sleeps until special_day
-    sleeps = sleeps_until_special_day(current_date, special_day)
+    sleeps = days_between_dates(current_date, special_day)
     print(f"Number of sleeps until special_day: {sleeps}")
+
+    # Calculate how many days in the countdown
+    start_from_day_tuple = string_to_date_tuple(start_from_day)
+    countdown_days = abs(days_between_dates(current_date, start_from_day))
+    print(f"The countdown is about: {countdown_days} days")
+
+
+
     # sleeps = 1
     # Main Loop
     while True:
         spread = (spread +.05) % twopi # The parameter that gets passed to progress for periodic light
         dark = ldr.read_u16() > LDR_THRESHOLD # True if ldr value is read as high
         if consistent_dark and not bedtime:  # Darkness detected
-            progress(np,sleeps,spread,light_settings)
+            progress(countdown_days,np,sleeps,spread,light_settings)
         else:
             if bedtime or consistent_light:
                 lightsout(np)
