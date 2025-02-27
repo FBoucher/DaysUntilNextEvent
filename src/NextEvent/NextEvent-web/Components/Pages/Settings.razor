@@ -48,8 +48,30 @@
         <FluentStack Orientation="Orientation.Vertical" VerticalGap="20">
             
             <FluentStack Orientation="Orientation.Horizontal">
-                <FluentDatePicker Label="Important Date" @bind-Value="myDate"  />
+                <FluentDatePicker Label="Start From Date" @bind-Value="dateStartFrom" Required=true  />
             </FluentStack>
+
+            <FluentStack Orientation="Orientation.Horizontal">
+                <FluentDatePicker Label="Important Date" @bind-Value="myDate" Required=true  />
+            </FluentStack>
+
+            <div>
+                <FluentStack Orientation="Orientation.Horizontal">
+                    <FluentTextField Label="Daily Start Time (24 hours time format)" 
+                                    @bind-Value="mySettings.StartTime" 
+                                    Pattern="^(?:[01]\d|2[0-3]):[0-5]\d$" 
+                                    Required=true 
+                                    />
+                </FluentStack>
+                <FluentValidationMessage For="@(() => mySettings.StartTime)" />
+            </div>
+
+            <div>
+                <FluentStack Orientation="Orientation.Horizontal">
+                    <FluentTextField Label="Daily End Time (24 hours time format)" @bind-Value="mySettings.EndTime" Pattern="^(?:[01]\d|2[0-3]):[0-5]\d$" Required=true/>
+                </FluentStack>
+                <FluentValidationMessage For="@(() => mySettings.EndTime)" />
+            </div>
 
             <FluentCheckbox @bind-Value="mySettings.UseCustomColors" Label="Use my colors"/>
 
@@ -90,7 +112,8 @@
     public OfficeColor? OfficeColor { get; set; }
 
     private Domain.MySettings mySettings = new();
-    private DateTime? myDate = DateTime.Now; 
+    private DateTime? dateStartFrom = DateTime.Now;
+    private DateTime? myDate = DateTime.Now;
 
     private string settingsURL = string.Empty;
 
@@ -139,6 +162,7 @@
                 mySettings = JsonSerializer.Deserialize<Domain.MySettings>(content) ?? new Domain.MySettings();
             }
             myDate = DateTime.Parse(mySettings.ImportantDate);
+            dateStartFrom = DateTime.Parse(mySettings.StartFromDay);
         }
         catch (Exception ex)
         {
@@ -151,6 +175,7 @@
         var docsContainer = BlobClient.GetBlobContainerClient("fileuploads");
 
         mySettings.ImportantDate = myDate?.ToString("yyyy-MM-dd") ?? string.Empty;
+        mySettings.StartFromDay = dateStartFrom?.ToString("yyyy-MM-dd") ?? string.Empty;
 
         var blobClient = docsContainer.GetBlobClient("mysettings.json");
         var jsonContent = JsonSerializer.Serialize(mySettings);
