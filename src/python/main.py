@@ -58,11 +58,11 @@ def get_timezone():
                 print("Timezone not found in response.")
                 return None
         else:
-            print(f"Error fetching timezone: {response.status_code}")
+            log_error(f"Error fetching timezone: {response.status_code}")
             response.close()
             return None
     except Exception as e:
-        print("Error retrieving timezone:", e)
+        log_error("Error retrieving timezone:", e)
         return None
 
 # Function to get local time using timeapi.io
@@ -80,11 +80,11 @@ def get_local_time(timezone):
             response.close()
             return (year, month, day)
         else:
-            print(f"Error fetching local time: {response.status_code}")
+            log_error(f"Error fetching local time: {response.status_code}")
             response.close()
             return None
     except Exception as e:
-        print("Error retrieving local time:", e)
+        log_error("Error retrieving local time:", e)
         return None
 
 
@@ -109,11 +109,11 @@ def get_light_settings():
             response.close()
             return (ImportantDate, StartFromDay, PrimaryRGBColor, SecondaryRGBColor, UseCustomColors, StartTime, EndTime)
         else:
-            print(f"Error fetching online settings: {response.status_code}")
+            log_error(f"Error fetching online settings: {response.status_code}")
             response.close()
             return None
     except Exception as e:
-        print("Error retrieving online settings:", e)
+        log_error("Error retrieving online settings:", e)
         return None    
 
 
@@ -163,11 +163,11 @@ def progress(countdown_days, np, sleeps, spread,light_settings):
                     r = clamp(r + variation_1)
                     g = clamp(g - variation_1)
                     b = clamp(b + variation_2)
-                    if light_settings[3] == True:
+                    if light_settings[4] == True:
                         if i % 2 == 0:
-                            np[j] =  string_to_rgb(light_settings[1])
-                        else:
                             np[j] =  string_to_rgb(light_settings[2])
+                        else:
+                            np[j] =  string_to_rgb(light_settings[3])
                         
                     else:
                         np[j] =  (r,g,b)
@@ -235,11 +235,23 @@ def is_within_time_range(start_time, end_time, current_time):
         return current_minutes >= start_minutes or current_minutes <= end_minutes
 
 
+
+def log_error(error_msg):
+    print(error_msg)
+    try:
+        with open('errors.log', 'a') as f:
+            f.write(f"{time.time()}: {error_msg}\n")
+    except:
+        # If we can't write to the log file, at least print to console
+        print(f"Failed to log error: {error_msg}")
+
+
+
 # Main program
 def main():
     global todays_color_r, todays_color_g, todays_color_b  #bedtime, 
     
-    #wake_up_routine(PIXELS)
+    wake_up_routine(PIXELS)
 
     # Initialise local variables
     LDR_THRESHOLD = 700 # The light dependent resistor reading threshold for light/dark
@@ -275,13 +287,15 @@ def main():
     # Get timezone from IP
     timezone = get_timezone()
     if timezone is None:
-        print("Could not detect timezone.")
+        np.fill((255, 0, 0))
+        log_error("Could not detect timezone.")
         return
 
     # Get local time using the detected timezone
     current_date = get_local_time(timezone)
     if current_date is None:
-        print("Could not retrieve local time.")
+        np.fill((255, 0, 0))
+        log_error("Could not retrieve local time.")
         return
 
     print(f"Current local date: {current_date}")
@@ -307,8 +321,8 @@ def main():
 
     # Calculate how many days in the countdown
     start_from_day_tuple = string_to_date_tuple(start_from_day)
-    countdown_days = abs(days_between_dates(current_date, start_from_day))
-    print(f"The countdown is about: {countdown_days} days")
+    countdown_days = abs(days_between_dates(start_from_day_tuple, special_day))
+    print(f"The full countdown is {countdown_days} days long")
 
     print(f"Start Time: {start_time}")
     print(f"End Time: {end_time}")
@@ -320,17 +334,17 @@ def main():
         dark = ldr.read_u16() > LDR_THRESHOLD # True if ldr value is read as high
         current_time = time.localtime()
 
-        print(f"it'scurrently: {current_time}")
+        # print(f"it'scurrently: {current_time}")
 
         if is_within_time_range(start_time, end_time, current_time):
-            print('-> lights on!')
+            # print('-> lights on!')
             if consistent_dark: #and not bedtime:  # Darkness detected
                 progress(countdown_days,np,sleeps,spread,light_settings)
             else:
                 if  consistent_light:  # bedtime or
                     lightsout(np)
         else:
-            print('-> lights off!')
+            # print('-> lights off!')
             lightsout(np)
 
         if consistent_light: #and bedtime:
