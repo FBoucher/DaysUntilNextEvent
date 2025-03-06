@@ -1,11 +1,13 @@
 import network
 import urequests
 import time
+import ntptime
 from machine import Pin, ADC, reset
 import neopixel
 import random
 import math
 import config
+import os
 
 # Globals
 
@@ -80,11 +82,13 @@ def get_local_time(timezone):
             response.close()
             return (year, month, day)
         else:
-            log_error(f"Error fetching local time: {response.status_code}")
+            msg = f"Error fetching local time: {response.status_code}"
+            log_error(msg)
             response.close()
             return None
     except Exception as e:
-        log_error("Error retrieving local time:", e)
+        msg = f"Exception retrieving local time: {e}"
+        log_error(msg)
         return None
 
 
@@ -109,11 +113,13 @@ def get_light_settings():
             response.close()
             return (ImportantDate, StartFromDay, PrimaryRGBColor, SecondaryRGBColor, UseCustomColors, StartTime, EndTime)
         else:
-            log_error(f"Error fetching online settings: {response.status_code}")
+            msg = f"Error fetching online settings: {response.status_code}"
+            log_error(msg)
             response.close()
             return None
     except Exception as e:
-        log_error("Error retrieving online settings:", e)
+        msg = f"Error retrieving online settings: {e}"
+        log_error(msg)
         return None    
 
 
@@ -200,17 +206,17 @@ def wake_up_routine(pixels):
     for i in range(pixels):
         np[i] = (0, 255, 0)
         np.write()
-        time.sleep_ms(25)
+        time.sleep_ms(15)
 
-    time.sleep_ms(500)
+    time.sleep_ms(250)
     np.fill((155, 155, 0))
     np.write()
 
-    time.sleep_ms(500)
+    time.sleep_ms(250)
     np.fill((0, 0, 255))
     np.write()
 
-    time.sleep_ms(500)
+    time.sleep_ms(250)
     np.fill((0, 0, 0))
     np.write()
 
@@ -234,24 +240,75 @@ def is_within_time_range(start_time, end_time, current_time):
     else:
         return current_minutes >= start_minutes or current_minutes <= end_minutes
 
-
+def display_error_state():
+    np.fill((255, 0, 0))
+    np.write()
 
 def log_error(error_msg):
     print(error_msg)
     try:
-        with open('errors.log', 'a') as f:
-            f.write(f"{time.time()}: {error_msg}\n")
+        f=open('errors.log', 'a')
+        f.write(f"{time.time()}: {error_msg}\n")
+        f.close()
     except:
         # If we can't write to the log file, at least print to console
         print(f"Failed to log error: {error_msg}")
 
+def log_msg(msg):
+    print(msg)
+    try:
+        f=open('trace.log', 'a')
+        f.write(f"{time.time()}: {msg}\n")
+        f.close()
+    except:
+        # If we can't write to the log file, at least print to console
+        print(f"Failed to log error: {msg}")
 
+
+def reset_trace():
+    try:
+        os.listdir()
+        os.remove("trace.log")
+    except:
+        print(f"No trace yet.")
+
+def reset_log():
+    try:
+        os.listdir()
+        os.remove("errors.log")
+    except:
+        print(f"No errors yet.")
+
+def show_progress(progress):
+    """
+    Show progress on the LED strip.
+    
+    :param progress: A number between 1 and 10 indicating the progress level.
+    """
+    if not (1 <= progress <= 10):
+        raise ValueError("Progress must be between 1 and 10")
+
+    # Calculate the number of LEDs to turn on
+    num_leds_on = int((progress / 10) * PIXELS)
+
+    # Turn on the LEDs
+    for i in range(PIXELS):
+        if i < num_leds_on:
+            np[i] = (0, 255, 0)  # Green color
+        else:
+            np[i] = (0, 0, 0)  # Turn off the LED
+
+    np.write()
 
 # Main program
 def main():
     global todays_color_r, todays_color_g, todays_color_b  #bedtime, 
-    
+
     wake_up_routine(PIXELS)
+
+    # Reset trace file
+    reset_trace()
+    reset_log()
 
     # Initialise local variables
     LDR_THRESHOLD = 700 # The light dependent resistor reading threshold for light/dark
@@ -269,8 +326,9 @@ def main():
     todays_color_r = random.randrange(1,99) /100
     todays_color_g = random.randrange(1,99) /100
     todays_color_b = random.randrange(1,99) /100
-    print(f"today's based color: ({todays_color_r, todays_color_g, todays_color_b})")
+    log_msg(f"today's based color: ({todays_color_r, todays_color_g, todays_color_b})")
 
+    show_progress(2)
 
     # Interrupts
     # switch.irq(trigger=Pin.IRQ_FALLING, handler=trigger_bedtime)
@@ -278,27 +336,36 @@ def main():
     # Start
     # toggle onboard LED as sign of life
     led.on()       		# Turn the LED on
-    time.sleep(0.5)     # Keep it on for 0.5 seconds
-    led.off()      		# Turn the LED off
-    lightsout(np) 		# Turn off the light strip lights
+    #time.sleep(0.5)     # Keep it on for 0.5 seconds
+    #led.off()      		# Turn the LED off
+    #lightsout(np) 		# Turn off the light strip lights
     connect_to_wifi(SSID, PASSWORD)
     # Get local time directly using IP
 
     # Get timezone from IP
     timezone = get_timezone()
     if timezone is None:
-        np.fill((255, 0, 0))
         log_error("Could not detect timezone.")
+        display_error_state()
         return
+    
+    log_msg(f"Detected timezone: {timezone}")
+    show_progress(3)
 
     # Get local time using the detected timezone
     current_date = get_local_time(timezone)
     if current_date is None:
-        np.fill((255, 0, 0))
+        display_error_state()
         log_error("Could not retrieve local time.")
         return
 
-    print(f"Current local date: {current_date}")
+
+    show_progress(4)
+    log_msg(f"Current local date: {current_date}")
+
+
+    ntptime.settime()
+    show_progress(5)
     
     # Get Online settings
     light_settings = get_light_settings()
@@ -309,47 +376,65 @@ def main():
     UseCustomColors = light_settings[4]
     start_time = light_settings[5]
     end_time = light_settings[6]
-    print(f"Important Date: {light_settings[0]}")
-    print(f"Start from Date: {start_from_day}")
-    print(f"Primary RGB Color: {primaryRGBColor}")
-    print(f"Secondary RGB Color: {secondaryRGBColor}")
-    print(f"Use Custom Colors: {UseCustomColors}")
+    log_msg(f"Important Date: {light_settings[0]}")
+    log_msg(f"Start from Date: {start_from_day}")
+    log_msg(f"Primary RGB Color: {primaryRGBColor}")
+    log_msg(f"Secondary RGB Color: {secondaryRGBColor}")
+    log_msg(f"Use Custom Colors: {UseCustomColors}")
+
+    show_progress(6)
 
     # Calculate sleeps until special_day
     sleeps = days_between_dates(current_date, special_day)
-    print(f"Number of sleeps until special_day: {sleeps}")
+    log_msg(f"Number of sleeps until special_day: {sleeps}")
+
+    show_progress(7)
 
     # Calculate how many days in the countdown
     start_from_day_tuple = string_to_date_tuple(start_from_day)
     countdown_days = abs(days_between_dates(start_from_day_tuple, special_day))
-    print(f"The full countdown is {countdown_days} days long")
+    log_msg(f"The full countdown is {countdown_days} days long")
 
-    print(f"Start Time: {start_time}")
-    print(f"End Time: {end_time}")
+    show_progress(8)
 
+    log_msg(f"Start Time: {start_time}")
+    log_msg(f"End Time: {end_time}")
+
+    show_progress(10)
+    time.sleep_ms(500)
+    lightsout(np)
+
+    log_msg(f"All Set. Starting main loop...")
+    log_error(f"All Set. Starting main loop...")
     # sleeps = 1
+    iteration_count = 0
     # Main Loop
     while True:
         spread = (spread +.05) % twopi # The parameter that gets passed to progress for periodic light
         dark = ldr.read_u16() > LDR_THRESHOLD # True if ldr value is read as high
         current_time = time.localtime()
 
-        # print(f"it'scurrently: {current_time}")
+        if iteration_count % 100 == 0:
+            log_msg(f"it'scurrently: {current_time[3]}:{current_time[4]}")
 
         if is_within_time_range(start_time, end_time, current_time):
-            # print('-> lights on!')
+            
+            if iteration_count % 100 == 0:
+                log_msg('-> lights on!')
+
             if consistent_dark: #and not bedtime:  # Darkness detected
                 progress(countdown_days,np,sleeps,spread,light_settings)
             else:
                 if  consistent_light:  # bedtime or
                     lightsout(np)
         else:
-            # print('-> lights off!')
+            if iteration_count % 100 == 0:  
+                log_msg('-> lights off!')
             lightsout(np)
 
         if consistent_light: #and bedtime:
             # It has been light for multiple consecutive readings following a bedtime button press
-            print('Looks like morning. Resetting...')
+            log_msg('Looks like morning. Resetting...')
             reset()
 
         if dark:
@@ -361,6 +446,7 @@ def main():
         consistent_dark = consecutive_dark_count >= CONSECUTIVE_COUNT
         consistent_light = consecutive_light_count >= CONSECUTIVE_COUNT
 
+        iteration_count += 1
 
 
 
