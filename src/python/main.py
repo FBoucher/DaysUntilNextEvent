@@ -145,47 +145,53 @@ def clamp(value, min_val=0, max_val=255):
     return max(min(int(value), max_val), min_val)
 
 
-def progress(countdown_days, np, sleeps, spread, light_settings, from_pi=False):
+def progress(countdown_days, np, sleeps, spread, light_settings, from_pi=False, is_reverse=False):
     advent = sleeps <= countdown_days
     if advent:
-        # Advent adjustment to progress bar
-        # to make things confusing, LEDs are indexed from (PIXELS-1) to 0
-        for i in range(countdown_days, sleeps-1, -1):
-                variation_1 = ((countdown_days+1)-i) * random.choice ([-1,1])
-                variation_2 = ((countdown_days+1)-i) * random.choice ([-1,1])
-                pixelblockchunk = int(PIXELS/countdown_days) # We'll use blocks of this size for the first countdown_days days
-                
-                if not from_pi:
-                    # Original logic
-                    pixelblockmax = PIXELS - (countdown_days - i) * pixelblockchunk
-                    if i>1:
-                        pixelblockmin = pixelblockmax - pixelblockchunk
-                    else:
-                        pixelblockmin = 0
+        # Determine range based on whether we want to show days passed or days remaining
+        if not is_reverse:
+            # Original logic - show days passed (countdown_days down to sleeps)
+            day_range = range(countdown_days, sleeps-1, -1)
+        else:
+            # Reversed logic - show days remaining (sleeps-1 down to 0)
+            day_range = range(sleeps-1, -1, -1)
+            
+        for i in day_range:
+            variation_1 = ((countdown_days+1)-i) * random.choice ([-1,1])
+            variation_2 = ((countdown_days+1)-i) * random.choice ([-1,1])
+            pixelblockchunk = int(PIXELS/countdown_days) # We'll use blocks of this size for the first countdown_days days
+            
+            if not from_pi:
+                # Original direction (start from end of strip)
+                pixelblockmax = PIXELS - (countdown_days - i) * pixelblockchunk
+                if i>1:
+                    pixelblockmin = pixelblockmax - pixelblockchunk
                 else:
-                    # Reversed logic
-                    pixelblockmin = (countdown_days - i) * pixelblockchunk
-                    if i>1:
-                        pixelblockmax = pixelblockmin + pixelblockchunk
-                    else:
-                        pixelblockmax = PIXELS
-                
-                for j in range(pixelblockmin, pixelblockmax):
+                    pixelblockmin = 0
+            else:
+                # Reversed direction (start from beginning of strip)
+                pixelblockmin = (countdown_days - i) * pixelblockchunk
+                if i>1:
+                    pixelblockmax = pixelblockmin + pixelblockchunk
+                else:
+                    pixelblockmax = PIXELS
+            
+            for j in range(pixelblockmin, pixelblockmax):
                 # Each block drifts at random, clamped between 0 and 255
-                    r, g, b = np[j]  # The current RGB values of the pixel
-                    r = clamp(r + variation_1)
-                    g = clamp(g - variation_1)
-                    b = clamp(b + variation_2)
-                    if light_settings[4] == True:
-                        if i % 2 == 0:
-                            np[j] = string_to_rgb(light_settings[2])
-                        else:
-                            np[j] = string_to_rgb(light_settings[3])
+                r, g, b = np[j]  # The current RGB values of the pixel
+                r = clamp(r + variation_1)
+                g = clamp(g - variation_1)
+                b = clamp(b + variation_2)
+                if light_settings[4] == True:
+                    if i % 2 == 0:
+                        np[j] = string_to_rgb(light_settings[2])
                     else:
-                        np[j] = (r,g,b)
+                        np[j] = string_to_rgb(light_settings[3])
+                else:
+                    np[j] = (r,g,b)
     else:
+        # Rest of the function remains unchanged for the breathing effect
         for i in range(PIXELS):
-            # If it is not advent, then this formula will give a nice 'breathing' effect
             pixel_index = PIXELS - 1 - i if from_pi else i
             brightness = 32 * (1 + 4 *(math.sin(spread + math.pi)+1)) * math.exp(-(PIXELS/2-i) ** 2 / (1+20*(math.sin(spread)+1)) ** 2)
             np[pixel_index] = (clamp(todays_color_r * brightness), clamp(todays_color_g * brightness), clamp(todays_color_b * brightness))
