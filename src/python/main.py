@@ -24,13 +24,6 @@ np = neopixel.NeoPixel(Pin(28), PIXELS)
 led = Pin("LED", Pin.OUT)
 
 
-# def trigger_bedtime(pin):
-#     global bedtime, np
-#     switch.irq(handler=None)  # Disable the interrupt after the first trigger we want the button to work once only per day
-#     print("Interrupt disabled")
-#     bedtime = True
-#     print('lights out')
-
 
 # Function to connect to WiFi
 def connect_to_wifi(ssid, password):
@@ -67,6 +60,32 @@ def get_timezone():
         log_error("Error retrieving timezone:", e)
         return None
 
+def get_timezone_offset(timezone):
+    url = f"http://worldtimeapi.org/api/timezone/{timezone}"
+    try:
+        print(f"Fetching timezone offset for timezone: {timezone}")
+        response = urequests.get(url)
+        if response.status_code == 200:
+            data = response.json()
+            offset = data['utc_offset']
+            # Convert offset from format "+HH:MM" to hours
+            hours_offset = int(offset[:3])
+            response.close()
+            return hours_offset
+        else:
+            msg = f"Error fetching timezone offset: {response.status_code}"
+            log_error(msg)
+            response.close()
+            return None
+    except Exception as e:
+        msg = f"Exception retrieving timezone offset: {e}"
+        log_error(msg)
+        return None
+
+def adjust_time_with_offset(current_time, offset):
+    adjusted_time = time.mktime(current_time) + offset * 3600
+    return time.localtime(adjusted_time)
+
 # Function to get local time using timeapi.io
 def get_local_time(timezone):
     url = f"https://timeapi.io/api/Time/current/zone?timeZone={timezone}"
@@ -91,7 +110,15 @@ def get_local_time(timezone):
         log_error(msg)
         return None
 
-
+def get_local_time_with_retries(timezone, retries=3, delay=5):
+    for attempt in range(retries):
+        local_time = get_local_time(timezone)
+        if local_time:
+            return local_time
+        log_error(f"Attempt {attempt + 1} failed to get local time. Retrying in {delay} seconds...")
+        time.sleep(delay)
+    log_error("Failed to get local time after multiple attempts.")
+    return None
 
 
 
@@ -219,7 +246,7 @@ def wake_up_routine(pixels):
     for i in range(pixels):
         np[i] = (0, 255, 0)
         np.write()
-        time.sleep_ms(15)
+        time.sleep_ms(10)
 
     time.sleep_ms(250)
     np.fill((155, 155, 0))
@@ -323,6 +350,8 @@ def main():
     reset_trace()
     reset_log()
 
+    log_error(f"Starting up...no errors yet.")
+
     # Initialise local variables
     LDR_THRESHOLD = 700 # The light dependent resistor reading threshold for light/dark
     CONSECUTIVE_COUNT = 25 # Consecutive readings needed to count a reading as 'consistent
@@ -365,17 +394,22 @@ def main():
     log_msg(f"Detected timezone: {timezone}")
     show_progress(3)
 
-    # Get local time using the detected timezone
-    current_date = get_local_time(timezone)
+    # Get timezone offset
+    timezone_offset = get_timezone_offset(timezone)
+    if timezone_offset is None:
+        log_error("Could not retrieve timezone offset.")
+        display_error_state()
+        return
+
+    # Get local time using the detected timezone with retries
+    current_date = get_local_time_with_retries(timezone)
     if current_date is None:
         display_error_state()
         log_error("Could not retrieve local time.")
         return
 
-
     show_progress(4)
     log_msg(f"Current local date: {current_date}")
-
 
     ntptime.settime()
     show_progress(5)
@@ -418,7 +452,7 @@ def main():
     lightsout(np)
 
     log_msg(f"All Set. Starting main loop...")
-    log_error(f"All Set. Starting main loop...")
+ 
     # sleeps = 1
     iteration_count = 0
     # Main Loop
@@ -426,11 +460,12 @@ def main():
         spread = (spread +.05) % twopi # The parameter that gets passed to progress for periodic light
         dark = ldr.read_u16() > LDR_THRESHOLD # True if ldr value is read as high
         current_time = time.localtime()
+        adjusted_time = adjust_time_with_offset(current_time, timezone_offset)
 
         if iteration_count % 100 == 0:
-            log_msg(f"it'scurrently: {current_time[3]}:{current_time[4]}")
+            log_msg(f"it's currently: {adjusted_time[3]}:{adjusted_time[4]}")
 
-        if is_within_time_range(start_time, end_time, current_time):
+        if is_within_time_range(start_time, end_time, adjusted_time):
             
             if iteration_count % 100 == 0:
                 log_msg('-> lights on!')
