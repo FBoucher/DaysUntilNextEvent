@@ -145,25 +145,32 @@ def clamp(value, min_val=0, max_val=255):
     return max(min(int(value), max_val), min_val)
 
 
-def progress(countdown_days, np, sleeps, spread,light_settings):
-
-
+def progress(countdown_days, np, sleeps, spread, light_settings, from_pi=False):
     advent = sleeps <= countdown_days
     if advent:
         # Advent adjustment to progress bar
         # to make things confusing, LEDs are indexed from (PIXELS-1) to 0
         for i in range(countdown_days, sleeps-1, -1):
-                variation_1 = ((countdown_days+1)-i) * random.choice ([-1,1]) #either -1 or +1, each sleep less is more volatile
+                variation_1 = ((countdown_days+1)-i) * random.choice ([-1,1])
                 variation_2 = ((countdown_days+1)-i) * random.choice ([-1,1])
                 pixelblockchunk = int(PIXELS/countdown_days) # We'll use blocks of this size for the first countdown_days days
-                pixelblockmax = PIXELS - (countdown_days - i) * pixelblockchunk
-                if i>1:
-                    pixelblockmin = pixelblockmax - pixelblockchunk
+                
+                if not from_pi:
+                    # Original logic
+                    pixelblockmax = PIXELS - (countdown_days - i) * pixelblockchunk
+                    if i>1:
+                        pixelblockmin = pixelblockmax - pixelblockchunk
+                    else:
+                        pixelblockmin = 0
                 else:
-                    pixelblockmin = 0
-                    # For special_day Eve, use all remaining pixels
-                # print(f'Day: {i}. {pixelblockmin} to {pixelblockmax}')
-                for j in range(pixelblockmin,pixelblockmax):
+                    # Reversed logic
+                    pixelblockmin = (countdown_days - i) * pixelblockchunk
+                    if i>1:
+                        pixelblockmax = pixelblockmin + pixelblockchunk
+                    else:
+                        pixelblockmax = PIXELS
+                
+                for j in range(pixelblockmin, pixelblockmax):
                 # Each block drifts at random, clamped between 0 and 255
                     r, g, b = np[j]  # The current RGB values of the pixel
                     r = clamp(r + variation_1)
@@ -171,17 +178,17 @@ def progress(countdown_days, np, sleeps, spread,light_settings):
                     b = clamp(b + variation_2)
                     if light_settings[4] == True:
                         if i % 2 == 0:
-                            np[j] =  string_to_rgb(light_settings[2])
+                            np[j] = string_to_rgb(light_settings[2])
                         else:
-                            np[j] =  string_to_rgb(light_settings[3])
-                        
+                            np[j] = string_to_rgb(light_settings[3])
                     else:
-                        np[j] =  (r,g,b)
+                        np[j] = (r,g,b)
     else:
         for i in range(PIXELS):
             # If it is not advent, then this formula will give a nice 'breathing' effect
+            pixel_index = PIXELS - 1 - i if from_pi else i
             brightness = 32 * (1 + 4 *(math.sin(spread + math.pi)+1)) * math.exp(-(PIXELS/2-i) ** 2 / (1+20*(math.sin(spread)+1)) ** 2)
-            np[i] =  ( clamp(todays_color_r * brightness), clamp(todays_color_g * brightness), clamp(todays_color_b * brightness))
+            np[pixel_index] = (clamp(todays_color_r * brightness), clamp(todays_color_g * brightness), clamp(todays_color_b * brightness))
 
     np.write()
 
