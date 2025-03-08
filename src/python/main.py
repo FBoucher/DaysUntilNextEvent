@@ -16,14 +16,11 @@ PASSWORD = config.PASSWORD
 SETTINGSURL = config.SETTINGSURL
 PIXELS = config.PIXELS
 
-
 # Pin Assignment
 ldr = ADC(26)  # LDR connected to ADC on GPIO 26
 switch = Pin(15, Pin.IN, Pin.PULL_UP)  # Pull-up for momentary switch
 np = neopixel.NeoPixel(Pin(28), PIXELS)
 led = Pin("LED", Pin.OUT)
-
-
 
 # Function to connect to WiFi
 def connect_to_wifi(ssid, password):
@@ -57,13 +54,13 @@ def get_timezone():
             response.close()
             return None
     except Exception as e:
-        log_error("Error retrieving timezone:", e)
+        log_error(f"Error retrieving timezone: {e}")
         return None
 
 def get_timezone_offset(timezone):
     url = f"http://worldtimeapi.org/api/timezone/{timezone}"
     try:
-        print(f"Fetching timezone offset for timezone: {timezone}")
+        log_msg(f"Fetching timezone offset for timezone: {timezone}")
         response = urequests.get(url)
         if response.status_code == 200:
             data = response.json()
@@ -73,13 +70,11 @@ def get_timezone_offset(timezone):
             response.close()
             return hours_offset
         else:
-            msg = f"Error fetching timezone offset: {response.status_code}"
-            log_error(msg)
+            log_error(f"Error fetching timezone offset: {response.status_code}")
             response.close()
             return None
     except Exception as e:
-        msg = f"Exception retrieving timezone offset: {e}"
-        log_error(msg)
+        log_error(f"Exception retrieving timezone offset: {e}")
         return None
 
 def adjust_time_with_offset(current_time, offset):
@@ -90,7 +85,7 @@ def adjust_time_with_offset(current_time, offset):
 def get_local_time(timezone):
     url = f"https://timeapi.io/api/Time/current/zone?timeZone={timezone}"
     try:
-        print(f"Fetching local time for timezone: {timezone}")
+        log_msg(f"Fetching local time for timezone: {timezone}")
         response = urequests.get(url)
         if response.status_code == 200:
             data = response.json()
@@ -101,13 +96,11 @@ def get_local_time(timezone):
             response.close()
             return (year, month, day)
         else:
-            msg = f"Error fetching local time: {response.status_code}"
-            log_error(msg)
+            log_error(f"Error fetching local time: {response.status_code}")
             response.close()
             return None
     except Exception as e:
-        msg = f"Exception retrieving local time: {e}"
-        log_error(msg)
+        log_error(f"Exception retrieving local time: {e}")
         return None
 
 def get_local_time_with_retries(timezone, retries=3, delay=5):
@@ -125,7 +118,7 @@ def get_local_time_with_retries(timezone, retries=3, delay=5):
 # Function to get lighSettings
 def get_light_settings():
     try:
-        print(f"Fetching online settings")
+        log_msg(f"Fetching online settings")
         response = urequests.get(SETTINGSURL)
         if response.status_code == 200:
             data = response.json()
@@ -140,13 +133,11 @@ def get_light_settings():
             response.close()
             return (ImportantDate, StartFromDay, PrimaryRGBColor, SecondaryRGBColor, UseCustomColors, StartTime, EndTime)
         else:
-            msg = f"Error fetching online settings: {response.status_code}"
-            log_error(msg)
+            log_error(f"Error fetching online settings: {response.status_code}")
             response.close()
             return None
     except Exception as e:
-        msg = f"Error retrieving online settings: {e}"
-        log_error(msg)
+        log_error(f"Error retrieving online settings: {e}")
         return None    
 
 
@@ -159,7 +150,7 @@ def string_to_date(date_string):
 # Calculate sleeps until special_day
 def days_between_dates(current_date, special_day):
     current_year = current_date[0]
-    special_day_struct = time.mktime(string_to_date(special_day))  # Use the new function
+    special_day_struct = time.mktime(string_to_date(special_day))  
 
     today_struct = time.mktime(current_date + (0, 0, 0, 0, 0))
     sleeps = (special_day_struct - today_struct) // 86400 # seconds in a day
@@ -248,15 +239,15 @@ def wake_up_routine(pixels):
         np.write()
         time.sleep_ms(10)
 
-    time.sleep_ms(250)
+    time.sleep_ms(200)
     np.fill((155, 155, 0))
     np.write()
 
-    time.sleep_ms(250)
+    time.sleep_ms(200)
     np.fill((0, 0, 255))
     np.write()
 
-    time.sleep_ms(250)
+    time.sleep_ms(200)
     np.fill((0, 0, 0))
     np.write()
 
@@ -322,7 +313,6 @@ def reset_log():
 def show_progress(progress):
     """
     Show progress on the LED strip.
-    
     :param progress: A number between 1 and 10 indicating the progress level.
     """
     if not (1 <= progress <= 10):
@@ -372,15 +362,8 @@ def main():
 
     show_progress(2)
 
-    # Interrupts
-    # switch.irq(trigger=Pin.IRQ_FALLING, handler=trigger_bedtime)
-
-    # Start
-    # toggle onboard LED as sign of life
     led.on()       		# Turn the LED on
-    #time.sleep(0.5)     # Keep it on for 0.5 seconds
-    #led.off()      		# Turn the LED off
-    #lightsout(np) 		# Turn off the light strip lights
+  
     connect_to_wifi(SSID, PASSWORD)
     # Get local time directly using IP
 
