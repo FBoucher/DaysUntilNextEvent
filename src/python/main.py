@@ -130,8 +130,11 @@ def get_light_settings():
             UseCustomColors = data['UseCustomColors']
             StartTime = data['StartTime']
             EndTime = data['EndTime']
+            from_pi = data.get('FromPi', False)
+            is_reverse =  data.get('IsReverse', False)
+            marker_color =  data.get('MarkerColor', (255, 255, 255))
             response.close()
-            return (ImportantDate, StartFromDay, PrimaryRGBColor, SecondaryRGBColor, UseCustomColors, StartTime, EndTime)
+            return (ImportantDate, StartFromDay, PrimaryRGBColor, SecondaryRGBColor, UseCustomColors, StartTime, EndTime, from_pi, is_reverse, marker_color)
         else:
             log_error(f"Error fetching online settings: {response.status_code}")
             response.close()
@@ -163,9 +166,13 @@ def clamp(value, min_val=0, max_val=255):
     return max(min(int(value), max_val), min_val)
 
 
-def progress(countdown_days, np, sleeps, spread, light_settings, from_pi=False, is_reverse=False):
-    advent = sleeps <= countdown_days
-    if advent:
+def progress(countdown_days, np, sleeps, spread, light_settings):
+    from_pi = light_settings[7]
+    is_reverse = light_settings[8]
+    with_marker = light_settings[9]
+    countdown_time = sleeps <= countdown_days
+
+    if countdown_time:
         # Determine range based on whether we want to show days passed or days remaining
         if not is_reverse:
             # Original logic - show days passed (countdown_days down to sleeps)
@@ -207,6 +214,16 @@ def progress(countdown_days, np, sleeps, spread, light_settings, from_pi=False, 
                         np[j] = string_to_rgb(light_settings[3])
                 else:
                     np[j] = (r,g,b)
+
+            # Add marker LEDs for inactive blocks when with_marker is True
+            if with_marker:
+                for block in range(countdown_days):
+                    block_start = block * pixelblockchunk
+                    # Only set marker if it's outside the current active block
+                    if block_start < pixelblockmin or block_start >= pixelblockmax:
+                        np[block_start] = (255, 255, 255)  # White marker LED
+
+            
     else:
         # Rest of the function remains unchanged for the breathing effect
         for i in range(PIXELS):
