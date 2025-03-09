@@ -95,6 +95,21 @@
                                 IconEnd="@(new Icons.Filled.Size24.Color())" 
                                 Disabled="@(!mySettings.UseCustomColors)" />
             </FluentStack>
+
+            <FluentCheckbox @bind-Value="mySettings.FromPi" Label="Reverse Direction"/>
+            <FluentCheckbox @bind-Value="mySettings.IsReverse" Label="Reverse Days"/>
+            <FluentCheckbox @bind-Value="mySettings.WithMarker" Label="Show Markers"/>
+
+            <FluentStack Orientation="Orientation.Horizontal">
+                <FluentTextField    @bind-Value="mySettings.MarkerRGBColor" 
+                                Label="Markers RGB Color" 
+                                Placeholder="(255,255,255)" 
+                                @oninput="e => OnPasteRGB(e, nameof(mySettings.MarkerRGBColor))" 
+                                Disabled="@(!mySettings.WithMarker)" />
+                <FluentButton   OnClick="@(async () => await OpenColorPickerNewWindow())" 
+                            IconEnd="@(new Icons.Filled.Size24.Color())" 
+                            Disabled="@(!mySettings.WithMarker)" />
+            </FluentStack>
         
             <FluentStack Orientation="Orientation.Horizontal">
                 <FluentTextField @bind-Value="settingsURL" Label="Settings URL" ReadOnly=true />
@@ -142,6 +157,10 @@
             else if (propertyName == nameof(mySettings.SecondaryRGBColor))
             {
                 mySettings.SecondaryRGBColor = value;
+            }
+            else if (propertyName == nameof(mySettings.MarkerRGBColor))
+            {
+                mySettings.MarkerRGBColor = value;
             }
         }
     }

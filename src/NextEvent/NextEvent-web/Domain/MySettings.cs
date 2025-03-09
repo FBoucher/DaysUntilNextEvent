@@ -15,4 +15,12 @@ public class MySettings
     public bool UseCustomColors { get; set; } = false;
     public string StartTime { get; set; } = "09:00";
     public string EndTime { get; set; } = "22:00";
+    
+    public bool FromPi { get; set; } = false;
+
+    public bool IsReverse { get; set; } = false;
+
+    public bool WithMarker { get; set; } = false;
+
+    public string MarkerRGBColor { get; set; } = string.Empty;
 }

@@ -133,7 +133,7 @@ def get_light_settings():
             from_pi = data.get('FromPi', False)
             is_reverse =  data.get('IsReverse', False)
             with_marker =  data.get('WithMarker', True)
-            marker_color =  data.get('MarkerColor', (255, 255, 255))
+            marker_color =  data.get('MarkerRGBColor', (255, 255, 255))
             response.close()
             return (ImportantDate, StartFromDay, PrimaryRGBColor, SecondaryRGBColor, UseCustomColors, StartTime, EndTime, from_pi, is_reverse, with_marker, marker_color)
         else:
