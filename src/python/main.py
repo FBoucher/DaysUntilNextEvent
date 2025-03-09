@@ -354,6 +354,18 @@ def show_progress(progress):
 
     np.write()
 
+def set_ntp_time_with_retries(retries=3, delay=5):
+    for attempt in range(retries):
+        try:
+            ntptime.settime()
+            return True
+        except Exception as e:
+            log_error(f"Attempt {attempt + 1} failed to set NTP time: {e}")
+            if attempt < retries - 1:  # Don't sleep on the last attempt
+                time.sleep(delay)
+    log_error("Failed to set NTP time after multiple attempts")
+    return False
+
 # Main program
 def main():
     global todays_color_r, todays_color_g, todays_color_b  #bedtime, 
@@ -418,9 +430,9 @@ def main():
     show_progress(4)
     log_msg(f"Current local date: {current_date}")
 
-    ntptime.settime()
+    set_ntp_time_with_retries()
     show_progress(5)
-    
+
     # Get Online settings
     light_settings = get_light_settings()
     special_day = light_settings[0]
@@ -462,6 +474,7 @@ def main():
  
     # sleeps = 1
     iteration_count = 0
+    check_every = 10000 # Check every 10,000 iterations
     # Main Loop
     while True:
         spread = (spread +.05) % twopi # The parameter that gets passed to progress for periodic light
@@ -469,12 +482,12 @@ def main():
         current_time = time.localtime()
         adjusted_time = adjust_time_with_offset(current_time, timezone_offset)
 
-        if iteration_count % 100 == 0:
+        if iteration_count % check_every == 0:
             log_msg(f"it's currently: {adjusted_time[3]}:{adjusted_time[4]}")
 
         if is_within_time_range(start_time, end_time, adjusted_time):
             
-            if iteration_count % 100 == 0:
+            if iteration_count % check_every == 0:
                 log_msg('-> lights on!')
 
             if consistent_dark: #and not bedtime:  # Darkness detected
@@ -483,7 +496,7 @@ def main():
                 if  consistent_light:  # bedtime or
                     lightsout(np)
         else:
-            if iteration_count % 100 == 0:  
+            if iteration_count % check_every == 0:  
                 log_msg('-> lights off!')
             lightsout(np)
 
