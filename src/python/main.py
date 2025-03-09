@@ -132,9 +132,10 @@ def get_light_settings():
             EndTime = data['EndTime']
             from_pi = data.get('FromPi', False)
             is_reverse =  data.get('IsReverse', False)
+            with_marker =  data.get('WithMarker', True)
             marker_color =  data.get('MarkerColor', (255, 255, 255))
             response.close()
-            return (ImportantDate, StartFromDay, PrimaryRGBColor, SecondaryRGBColor, UseCustomColors, StartTime, EndTime, from_pi, is_reverse, marker_color)
+            return (ImportantDate, StartFromDay, PrimaryRGBColor, SecondaryRGBColor, UseCustomColors, StartTime, EndTime, from_pi, is_reverse, with_marker, marker_color)
         else:
             log_error(f"Error fetching online settings: {response.status_code}")
             response.close()
@@ -170,6 +171,7 @@ def progress(countdown_days, np, sleeps, spread, light_settings):
     from_pi = light_settings[7]
     is_reverse = light_settings[8]
     with_marker = light_settings[9]
+    marker_color = light_settings[10]
     countdown_time = sleeps <= countdown_days
 
     if countdown_time:
@@ -218,10 +220,15 @@ def progress(countdown_days, np, sleeps, spread, light_settings):
             # Add marker LEDs for inactive blocks when with_marker is True
             if with_marker:
                 for block in range(countdown_days):
-                    block_start = block * pixelblockchunk
+                    if not from_pi:
+                        # Original direction (start from end of strip)
+                        block_start = PIXELS - (block + 1) * pixelblockchunk
+                    else:
+                        # Reversed direction (start from beginning of strip)
+                        block_start = block * pixelblockchunk
                     # Only set marker if it's outside the current active block
                     if block_start < pixelblockmin or block_start >= pixelblockmax:
-                        np[block_start] = (255, 255, 255)  # White marker LED
+                        np[block_start] = marker_color
 
             
     else:
