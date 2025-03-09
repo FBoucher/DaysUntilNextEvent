@@ -228,7 +228,7 @@ def progress(countdown_days, np, sleeps, spread, light_settings):
                         block_start = block * pixelblockchunk
                     # Only set marker if it's outside the current active block
                     if block_start < pixelblockmin or block_start >= pixelblockmax:
-                        np[block_start] = marker_color
+                        np[block_start] = string_to_rgb(marker_color)
 
             
     else:
