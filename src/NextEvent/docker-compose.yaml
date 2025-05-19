@@ -1,0 +1,19 @@
+services:
+  nextevent-web:
+    image: "${NEXTEVENT_WEB_IMAGE}"
+    container_name: "nextevent-web"
+    environment:
+      OTEL_DOTNET_EXPERIMENTAL_OTLP_EMIT_EXCEPTION_LOG_ATTRIBUTES: "true"
+      OTEL_DOTNET_EXPERIMENTAL_OTLP_EMIT_EVENT_LOG_ATTRIBUTES: "true"
+      OTEL_DOTNET_EXPERIMENTAL_OTLP_RETRY: "in_memory"
+      ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
+      HTTP_PORTS: "8000"
+      ConnectionStrings__BlobConnection: "${BLOBCONNECTION}"
+    ports:
+      - "8001:8000"
+      - "8003:8002"
+    networks:
+      - "aspire"
+networks:
+  aspire:
+    driver: "bridge"

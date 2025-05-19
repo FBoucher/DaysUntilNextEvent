@@ -26,7 +26,7 @@ properties:
   template:
     containers:
       - image: {{ .Image }}
-        name: web
+        name: nextevent-web
         env:
           - name: AZURE_CLIENT_ID
             value: {{ .Env.MANAGED_IDENTITY_CLIENT_ID }}
@@ -45,5 +45,5 @@ properties:
     scale:
       minReplicas: 0
 tags:
-  azd-service-name: web
-  aspire-resource-name: web
+  azd-service-name: nextevent-web
+  aspire-resource-name: nextevent-web

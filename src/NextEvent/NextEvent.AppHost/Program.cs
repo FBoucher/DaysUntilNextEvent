@@ -22,8 +22,10 @@ if(!builder.Environment.IsDevelopment())
 var blobs = (builder.Environment.IsDevelopment()) ? builder.AddConnectionString("BlobConnection") : storage!.AddBlobs("BlobConnection");
 
 
-var web = builder.AddProject<Projects.NextEvent_web>("web")
+var web = builder.AddProject<Projects.NextEvent_web>("nextevent-web")
                     .WithExternalHttpEndpoints()
                     .WithReference(blobs);
+
+builder.AddDockerComposePublisher();
 
 builder.Build().Run();
