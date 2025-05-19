@@ -504,6 +504,20 @@ def main():
             # It has been light for multiple consecutive readings following a bedtime button press
             log_msg('Looks like morning. Resetting...')
             reset()
+            current_date = get_local_time_with_retries(timezone)
+            log_msg(f"Current local date: {current_date}")
+            light_settings = get_light_settings()
+            special_day = light_settings[0]
+            start_from_day = light_settings[1]
+            primaryRGBColor = light_settings[2]
+            secondaryRGBColor = light_settings[3]
+            UseCustomColors = light_settings[4]
+            start_time = light_settings[5]
+            end_time = light_settings[6]
+            sleeps = days_between_dates(current_date, special_day)
+            start_from_day_tuple = string_to_date_tuple(start_from_day)
+            countdown_days = abs(days_between_dates(start_from_day_tuple, special_day))
+
 
         if dark:
             consecutive_light_count = 0  # Reset counter if reading goes above threshold
