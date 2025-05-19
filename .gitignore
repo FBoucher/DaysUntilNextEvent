@@ -16,3 +16,4 @@ src/NextEvent/NextEvent.ServiceDefaults/obj/
 src/NextEvent/NextEvent.AppHost/appsettings.Development.json
 
 .env
+src/NextEvent/NextEvent.AppHost/appsettings.Development.json
